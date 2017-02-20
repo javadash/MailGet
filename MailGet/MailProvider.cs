@@ -13,14 +13,13 @@ using System.Collections.Generic;
 
 namespace MailGet {
     class MailProvider {
-        public async Task GetMail(String userId, String query) {
 
+        public async Task<String> GetMail( String userId, String query) {
             // If modifying these scopes, delete your previously saved credentials at ~/.credentials/gmail-dotnet-quickstart.json
-
             string[] Scopes = {
-                GmailService.Scope.GmailReadonly,
-                //GmailService.Scope.MailGoogleCom,
-                //GmailService.Scope.GmailModify
+            GmailService.Scope.GmailReadonly,
+            //GmailService.Scope.MailGoogleCom,
+            //GmailService.Scope.GmailModify
             };
             UserCredential credential;
             using (var stream = new FileStream("client_secret.json", FileMode.Open, FileAccess.Read)) {
@@ -41,65 +40,47 @@ namespace MailGet {
                 HttpClientInitializer = credential,
                 ApplicationName = this.GetType().ToString()
             });
-
+            
             var emailListRequest = gmailService.Users.Messages.List(userId);
             emailListRequest.LabelIds = "INBOX";
             emailListRequest.Q = query; //only get unread;
-            emailListRequest.MaxResults = 2; // only get 2 results
-
+            emailListRequest.MaxResults = 1; // only get 1 results
+            string subject = "";
             //get our emails
             var emailListResponse = await emailListRequest.ExecuteAsync();
 
             if (emailListResponse != null && emailListResponse.Messages != null) {
-                Console.WriteLine("there are {0} emails. press any key to continue!", emailListResponse.Messages.Count);
-                    
+                Console.WriteLine("Email Count {0}. press any key to continue!", emailListResponse.Messages.Count);
+
                 //then loop through each email and get what fields you want...
                 foreach (var email in emailListResponse.Messages) {
 
-                    var emailInfoRequest = gmailService.Users.Messages.Get("me", email.Id);
+                    var emailInfoRequest = gmailService.Users.Messages.Get(userId, email.Id);
                     //make another request for that email id...
                     var emailInfoResponse = await emailInfoRequest.ExecuteAsync();
 
                     if (emailInfoResponse != null) {
-                        String from = "";
-                        String date = "";
-                        String subject = "";
-                        String body = "";
                         //loop through the headers and get the fields we need...
                         foreach (var mParts in emailInfoResponse.Payload.Headers) {
-                            if (mParts.Name == "Date") {
-                                date = mParts.Value;
-                            } else if (mParts.Name == "From") {
-                                from = mParts.Value;
-                            } else if (mParts.Name == "Subject") {
+                            if (mParts.Name == "Subject") {
                                 subject = mParts.Value;
                             }
-
-                            if (date != "" && from != "") {
-                                if (emailInfoResponse.Payload.Parts == null && emailInfoResponse.Payload.Body != null) {
-                                    body = DecodeBase64String(emailInfoResponse.Payload.Body.Data);
-                                } else {
-                                    body = GetNestedBodyParts(emailInfoResponse.Payload.Parts, "");
-                                }
-
-                                //now you have the data you want....
-                            }
-
-                        } 
+                        }
                         //Console.Write(body);
-                        Console.WriteLine("{0}  --  {1}  -- {2}", subject, date, email.Id);
-                            
+                        Console.WriteLine("Subject: {0}", subject);
                     }
-
+                    await DeleteMail(gmailService, userId, email.Id);
                 }
             }
+            return subject;
 
         }
 
-        public async Task DeleteMail(GmailService service, String userId, String messageId) {
-            await Task.Delay(100);
+        public async Task DeleteMail(GmailService gmailService, String userId, String messageId) {
+            await Task.Delay(1000);
             try {
-                service.Users.Messages.Delete(userId, messageId).Execute();
+                gmailService.Users.Messages.Delete(userId, messageId).Execute();
+                Console.WriteLine("Message Deleted");
             }
             catch (Exception e) {
                 Console.WriteLine("An error occurred: " + e.Message);
