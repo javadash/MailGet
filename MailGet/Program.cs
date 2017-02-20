@@ -35,5 +35,12 @@ namespace MailGet {
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
         }
+
+        //public async Task<string> GetTwoFactorCodeAsync() {
+        //    await GetMail();
+        //    return await Task.FromResult<string>(otpAuth);
+
+        //    throw new NotImplementedException();
+        //}
     }
 }
